@@ -85,7 +85,10 @@ function confirmar(titulo, texto, cb, etiqueta = 'Sí, continuar', extra = '') {
   abrir('mConfirmar');
 }
 /* Lee un archivo y, si es una foto, la achica antes de guardarla.
-   Así la base de datos no se llena y todo viaja rápido a la nube. */
+   Así la base de datos no se llena y todo viaja rápido a la nube.
+   OJO: esto deja la foto como texto base64 metido en el JSON — úsalo
+   solo como respaldo cuando no hay nube disponible. Para fotos que van
+   a la base de datos compartida, usa subirFoto() en su lugar. */
 function leerArchivo(file, cb, maxLado = 600, calidad = 0.6) {
   if (!file) return;
   const fr = new FileReader();
@@ -112,6 +115,52 @@ function leerArchivo(file, cb, maxLado = 600, calidad = 0.6) {
     img.src = fr.result;
   };
   fr.readAsDataURL(file);
+}
+
+/* Sube una foto a Supabase Storage y entrega un link corto (URL pública)
+   en vez de meter el archivo entero (base64) dentro del JSON de la base
+   de datos. Esto es lo que evita el error "almacenamiento del navegador
+   lleno" y hace que subir/publicar sea rápido, porque ya no se mueve
+   toda la base de datos cada vez, solo el link de la foto.
+   Si por algo falla la subida (sin internet, bucket no configurado, etc.)
+   cae de respaldo al modo viejo (base64) para que la app no se rompa. */
+function subirFoto(file, carpeta, cb, maxLado = 1024, calidad = 0.75) {
+  if (!file) return;
+  if (!/^image\//.test(file.type || '')) { leerArchivo(file, cb, maxLado, calidad); return; }
+
+  const frOriginal = new FileReader();
+  frOriginal.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        if (w > maxLado || h > maxLado) {
+          const e = maxLado / Math.max(w, h);
+          w = Math.round(w * e); h = Math.round(h * e);
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        c.toBlob(blob => {
+          if (!blob || typeof subirBlobANube !== 'function') { leerArchivo(file, cb, maxLado, calidad); return; }
+          subirBlobANube(blob, carpeta, url => {
+            if (url) { cb(url); return; }
+            // sin nube disponible: seguimos con el modo viejo para no romper la app
+            const r = new FileReader();
+            r.onload = () => cb(r.result);
+            r.onerror = () => leerArchivo(file, cb, maxLado, calidad);
+            r.readAsDataURL(blob);
+          });
+        }, 'image/jpeg', calidad);
+      } catch (e) { leerArchivo(file, cb, maxLado, calidad); }
+    };
+    img.onerror = () => leerArchivo(file, cb, maxLado, calidad);
+    img.src = frOriginal.result;
+  };
+  frOriginal.onerror = () => leerArchivo(file, cb, maxLado, calidad);
+  frOriginal.readAsDataURL(file);
 }
 function notificar(uid, titulo, cuerpo) {
   BD.notis.unshift({ id: nuevoId(), usuario: uid, titulo, cuerpo, leida: false, creado: new Date().toISOString() });
