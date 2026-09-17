@@ -487,7 +487,7 @@ function conectar() {
     const files = Array.from(e.target.files).slice(0, 6 - App.fotos.length);
     let pend = files.length;
     if (!pend) return;
-    files.forEach(f => leerArchivo(f, url => {
+    files.forEach(f => subirFoto(f, 'publicaciones', url => {
       App.fotos.push(url);
       if (--pend === 0) pintarMinis();
     }));
@@ -519,7 +519,7 @@ function conectar() {
   $('#chatFoto').addEventListener('change', e => {
     const f = e.target.files[0];
     if (!f) return;
-    leerArchivo(f, url => { enviarMensaje('', url); avisar('Foto enviada', 'ok'); });
+    subirFoto(f, 'chat', url => { enviarMensaje('', url); avisar('Foto enviada', 'ok'); });
     e.target.value = '';
   });
   let tBusca;
@@ -533,7 +533,7 @@ function conectar() {
   /* solicitud de publicidad */
   $('#solImg').addEventListener('change', e => {
     const f = e.target.files[0];
-    if (f) leerArchivo(f, url => { App.fotoSolicitud = url; $('#zonaSol').innerHTML = `<img src="${url}" alt="">`; });
+    if (f) subirFoto(f, 'solicitudes', url => { App.fotoSolicitud = url; $('#zonaSol').innerHTML = `<img src="${url}" alt="">`; });
   });
   $('#formSolicitud').addEventListener('submit', e => { e.preventDefault(); enviarSolicitud(); });
 
@@ -567,7 +567,7 @@ function conectar() {
   /* perfil */
   $('#perfilFoto').addEventListener('change', e => {
     const f = e.target.files[0];
-    if (f) leerArchivo(f, url => { $('#vistaAvatar').innerHTML = `<img src="${url}" alt="">`; App.avatarNuevo = url; });
+    if (f) subirFoto(f, 'avatares', url => { $('#vistaAvatar').innerHTML = `<img src="${url}" alt="">`; App.avatarNuevo = url; });
   });
   $('#pfPass').addEventListener('input', () => medir($('#pfPass'), $('#medPerfil')));
   $('#formPerfil').addEventListener('submit', async e => {
@@ -607,7 +607,7 @@ function conectar() {
   /* premium */
   $('#pagoImg').addEventListener('change', e => {
     const f = e.target.files[0];
-    if (f) leerArchivo(f, url => {
+    if (f) subirFoto(f, 'pagos', url => {
       App.fotoPago = url;
       $('#zonaPago').innerHTML = `<img src="${url}" alt="Comprobante">`;
     });
@@ -617,7 +617,7 @@ function conectar() {
   /* admin: anuncios */
   $('#anImg').addEventListener('change', e => {
     const f = e.target.files[0];
-    if (f) leerArchivo(f, url => { App.fotoAnuncio = url; $('#zonaAn').innerHTML = `<img src="${url}" alt="">`; });
+    if (f) subirFoto(f, 'anuncios', url => { App.fotoAnuncio = url; $('#zonaAn').innerHTML = `<img src="${url}" alt="">`; });
   });
   $('#formAnuncio').addEventListener('submit', e => {
     e.preventDefault();
@@ -637,7 +637,7 @@ function conectar() {
   /* admin: yape */
   $('#yapeImg').addEventListener('change', e => {
     const f = e.target.files[0];
-    if (f) leerArchivo(f, url => { App.fotoYape = url; $('#vistaYape').innerHTML = `<img class="yape-qr" src="${url}" alt="">`; });
+    if (f) subirFoto(f, 'yape', url => { App.fotoYape = url; $('#vistaYape').innerHTML = `<img class="yape-qr" src="${url}" alt="">`; });
   });
   $('#formYape').addEventListener('submit', e => {
     e.preventDefault();
@@ -655,7 +655,7 @@ function conectar() {
   /* admin: marca */
   $('#marcaImg').addEventListener('change', e => {
     const f = e.target.files[0];
-    if (f) leerArchivo(f, url => { App.fotoLogo = url;
+    if (f) subirFoto(f, 'logos', url => { App.fotoLogo = url;
       $('#vistaLogo').innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover" alt="">`; });
   });
   $('#btnQuitarLogo').addEventListener('click', () => {
