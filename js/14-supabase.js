@@ -16,6 +16,7 @@ const SUPABASE_CONFIG = {
   segundosRevision: 5,      // cada cuánto revisa la nube (respaldo del realtime)
   supabaseUrl: 'https://zrnhlrefjzunyfdnphhj.supabase.co',
   supabaseKey: 'sb_publishable_iE2sosBWooKdoNUaOUFo7Q_ziUrEHIk',
+  bucketFotos: 'truequea-fotos', // bucket público en Supabase Storage
 };
 
 // SDK de Supabase (cargado dinámicamente) — preferimos CDN
@@ -191,6 +192,36 @@ async function bajarDatos() {
   } catch (e) {
     NUBE.error = e.message;
     marcarModo();
+  }
+}
+
+/* =====================================================================
+   FOTOS EN SUPABASE STORAGE
+   ---------------------------------------------------------------------
+   Antes, cada foto se guardaba como texto base64 dentro del mismo JSON
+   de la base de datos: eso llenaba el localStorage del navegador y
+   hacía que publicar/subir fuera lento (se movía TODA la base de datos
+   en cada guardado, no solo lo nuevo). Ahora el archivo va al bucket
+   de Storage y a la base de datos solo le llega la URL pública, que
+   pesa un puñado de bytes.
+   ===================================================================== */
+async function subirBlobANube(blob, carpeta, cb) {
+  try {
+    if (!NUBE.client) { cb(null); return; }
+    const nombre = `${carpeta || 'general'}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const { error } = await NUBE.client.storage
+      .from(SUPABASE_CONFIG.bucketFotos)
+      .upload(nombre, blob, { contentType: 'image/jpeg', upsert: false, cacheControl: '31536000' });
+    if (error) {
+      console.warn('Error subiendo foto a Storage:', error.message || error);
+      cb(null);
+      return;
+    }
+    const { data } = NUBE.client.storage.from(SUPABASE_CONFIG.bucketFotos).getPublicUrl(nombre);
+    cb(data && data.publicUrl ? data.publicUrl : null);
+  } catch (e) {
+    console.warn('Error subiendo foto a Storage:', e);
+    cb(null);
   }
 }
 
